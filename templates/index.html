@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Manager</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h1>Book Manager</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endwith %}
+
+<div class="top-bar">
+    <a href="{{ url_for('add') }}" class="button">
+        Add a Book
+    </a>
+
+    <span>Total books: <strong>{{count}}</strong></span>
+</div>
+
+<form method="GET" action="{{ url_for('index') }}" class="search-form"
+      <input
+            type="text"
+            name="search"
+            placeholder="Search by title"
+            value="{{ search }}"
+      >
+
+      <button type="submit">Search</button>
+<a href="{{ url_for('index') }}" class="button secondary">
+            Reset
+        </a>
+    </form>
+
+    <div class="sorting">
+        <span>Sort by year:</span>
+
+        <a href="{{ url_for('index', sort='asc') }}">
+            Oldest first
+        </a>
+
+        <a href="{{ url_for('index', sort='desc') }}">
+            Newest first
+        </a>
+    </div>
+
+    {% if books %}
+    <table>
+        <thead>
+            <tr>
+
+                <th>ID</th>
+                <th>image</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Year</th>
+                <th>Genre</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for book in books %}
+            <tr>
+                <td>{{ book["id"] }}</td>
+                <td><img src="https://up.yimg.com/ib/th/id/OIP.J4pp18z0swKd8cs-dPG7jgHaGh?pid=Api&rs=1&c=1&qlt=95&w=131&h=115"></td>
+                <td>{{ book["title"] }}</td>
+                <td>{{ book["author"] }}</td>
+                <td>{{ book["year"] }}</td>
+                <td>{{ book["genre"] }}</td>
+                <td>
+                    <a
+                        href="{{ url_for('edit', id=book['id']) }}"
+                        class="edit"
+                    >
+                        Edit
+                    </a>
+
+                    <a
+                        href="{{ url_for('delete', id=book['id']) }}"
+                        class="delete"
+                        onclick="return confirm('Delete this book?');"
+                    >
+                        Delete
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% else %}
+        <p class="empty">No books found.</p>
+    {% endif %}
+
+</div>
+
+</body>
+</html>
