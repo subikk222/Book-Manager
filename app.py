@@ -36,8 +36,24 @@ def index():
     conn = get_db_connection()
 
     if search:
+        fields = request.args.getlist("field")
+
+        allowed_fields = ["title", "author", "genre", "year"]
+
+        fields = [field for field in fields if field in allowed_fields]
+
+        if not fields:
+            fields = ["title"]
+
+        conditions = " OR ".join(
+            [f"{field} LIKE ?" for field in fields]
+        )
+
+        search_value = f"%{search}%"
+
         books = conn.execute(
-            "SELECT * FROM books WHERE title LIKE ?", (f"%{search}%",)
+            f"SELECT * FROM books WHERE {conditions}",
+            tuple(search_value for _ in fields)
         ).fetchall()
     elif sort == "asc":
         books = conn.execute(
@@ -49,7 +65,7 @@ def index():
         ).fetchall()
     else:
         books = conn.execute(
-            "SELECT * FROM BOOKS"
+            "SELECT * FROM books"
         ).fetchall()
 
     count = conn.execute(
@@ -73,7 +89,7 @@ def add():
 
         conn.execute(
             """INSERT INTO books (image, title, author, year, genre)
-            VALUES (?, ?, ?, ?)""", (image, title, author, year, genre)
+            VALUES (?, ?, ?, ?, ?)""", (image, title, author, year, genre)
         )
         conn.commit()
         conn.close()

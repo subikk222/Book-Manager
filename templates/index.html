@@ -7,7 +7,20 @@
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
 </head>
+<script>
+function toggleMenu() {
+    document.getElementById("sidePanel").classList.toggle("open");
+}
+</script>
 <body>
+<button class="menu-button" onclick="toggleMenu()">☰</button>
+
+<div id="sidePanel" class="side-panel">
+    <button class="close-menu" onclick="closeMenu()">×</button>
+
+    <h2>Menu</h2>
+
+</div>
 
 <div class="container">
     <h1>Book Manager</h1>
@@ -28,15 +41,59 @@
     <span>Total books: <strong>{{count}}</strong></span>
 </div>
 
-<form method="GET" action="{{ url_for('index') }}" class="search-form"
-      <input
-            type="text"
-            name="search"
-            placeholder="Search by title"
-            value="{{ search }}"
-      >
+<button type="button" onclick="openSearch()">Search</button>
 
-      <button type="submit">Search</button>
+<div id="searchPopup" class="search-popup">
+    <div class="search-box">
+        <span class="close-search" onclick="closeSearch()">&times;</span>
+
+        <h2>Search Books</h2>
+
+        <form method="GET" action="{{ url_for('index') }}">
+            <input
+                type="text"
+                name="search"
+                placeholder="Enter search..."
+                value="{{ search }}"
+            >
+
+            <p>Search by:</p>
+
+            <label>
+                <input type="checkbox" name="field" value="title" checked>
+                Title
+            </label>
+
+            <label>
+                <input type="checkbox" name="field" value="author">
+                Author
+            </label>
+
+            <label>
+                <input type="checkbox" name="field" value="genre">
+                Genre
+            </label>
+
+            <label>
+                <input type="checkbox" name="field" value="year">
+                Year
+            </label>
+
+            <button type="submit">Search</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openSearch() {
+    document.getElementById("searchPopup").style.display = "flex";
+}
+
+function closeSearch() {
+    document.getElementById("searchPopup").style.display = "none";
+}
+</script>
+
 <a href="{{ url_for('index') }}" class="button secondary">
             Reset
         </a>
@@ -73,7 +130,7 @@
             {% for book in books %}
             <tr>
                 <td>{{ book["id"] }}</td>
-                <td><img src="https://up.yimg.com/ib/th/id/OIP.J4pp18z0swKd8cs-dPG7jgHaGh?pid=Api&rs=1&c=1&qlt=95&w=131&h=115"></td>
+                <td><img src="{{ book['image'] }}", alt="{{ book['title'] }}"></td>
                 <td>{{ book["title"] }}</td>
                 <td>{{ book["author"] }}</td>
                 <td>{{ book["year"] }}</td>
