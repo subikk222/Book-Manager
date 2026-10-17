@@ -1,150 +1,399 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import sqlite3
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'library_secret_key'
-
+app.secret_key = "library_secret_key"
 DATABASE = "lib.db"
+
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
     conn = get_db_connection()
 
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS books (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        image TEXT NOT NULL,
-        title TEXT NOT NULL,
-        author TEXT NOT NULL,
-        year INTEGER NOT NULL,
-        genre TEXT NOT NULL
-        )
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS books (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            image TEXT NOT NULL,
+            title TEXT NOT NULL,
+            author TEXT NOT NULL,
+            year INTEGER NOT NULL,
+            genre TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS book_quantities (
+            book_id INTEGER PRIMARY KEY,
+            quantity INTEGER NOT NULL DEFAULT 10 CHECK(quantity >= 0),
+            FOREIGN KEY (book_id) REFERENCES books(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS cart (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            book_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL CHECK(quantity > 0),
+            UNIQUE(user_id, book_id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (book_id) REFERENCES books(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS borrowings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            book_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL CHECK(quantity > 0),
+            returned_quantity INTEGER NOT NULL DEFAULT 0,
+            borrowed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (book_id) REFERENCES books(id)
+        );
+
+        INSERT OR IGNORE INTO book_quantities (book_id, quantity)
+        SELECT id, 10 FROM books;
     """)
 
     conn.commit()
     conn.close()
 
-@app.route('/')
-def index():
-    search = request.args.get("search", "")
-    sort = request.args.get("sort", "")
 
+def login_required(route):
+    @wraps(route)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            flash("You need to login first.", "error")
+            return redirect(url_for("login"))
+        return route(*args, **kwargs)
+    return wrapper
+
+
+@app.route("/")
+def index():
     conn = get_db_connection()
+    search = request.args.get("search", "")
+    fields = request.args.getlist("field")
+    sort = request.args.get("sort")
+
+    query = """
+        SELECT books.*, COALESCE(book_quantities.quantity, 10) AS stock
+        FROM books
+        LEFT JOIN book_quantities ON books.id = book_quantities.book_id
+    """
+    params = []
+
+    allowed = ["title", "author", "genre", "year"]
+    conditions = []
 
     if search:
-        fields = request.args.getlist("field")
+        for field in fields or ["title"]:
+            if field in allowed:
+                conditions.append(f"CAST(books.{field} AS TEXT) LIKE ?")
+                params.append(f"%{search}%")
 
-        allowed_fields = ["title", "author", "genre", "year"]
+        if conditions:
+            query += " WHERE " + " OR ".join(conditions)
 
-        fields = [field for field in fields if field in allowed_fields]
+    if sort in ("asc", "desc"):
+        query += f" ORDER BY books.year {sort.upper()}"
 
-        if not fields:
-            fields = ["title"]
-
-        conditions = " OR ".join(
-            [f"{field} LIKE ?" for field in fields]
-        )
-
-        search_value = f"%{search}%"
-
-        books = conn.execute(
-            f"SELECT * FROM books WHERE {conditions}",
-            tuple(search_value for _ in fields)
-        ).fetchall()
-    elif sort == "asc":
-        books = conn.execute(
-            "SELECT * FROM books ORDER BY year ASC"
-        ).fetchall()
-    elif sort == "desc":
-        books = conn.execute(
-            "SELECT * FROM books ORDER BY year DESC"
-        ).fetchall()
-    else:
-        books = conn.execute(
-            "SELECT * FROM books"
-        ).fetchall()
-
-    count = conn.execute(
-        "SELECT COUNT(*) FROM books"
-    ).fetchone()[0]
-
+    books = conn.execute(query, params).fetchall()
     conn.close()
 
-    return render_template("index.html", books=books, count=count, search=search, sort=sort)
+    return render_template(
+        "index.html", books=books, count=len(books), search=search
+    )
 
-@app.route('/add', methods=['GET', 'POST'])
+
+@app.route("/add", methods=["GET", "POST"])
+@login_required
 def add():
     if request.method == "POST":
-        image = request.form["image"]
-        title = request.form.get("title")
-        author = request.form.get("author")
-        year = request.form.get("year")
-        genre = request.form.get("genre")
+        data = tuple(request.form.get(key, "") for key in
+                     ("image", "title", "author", "year", "genre"))
 
         conn = get_db_connection()
+        cursor = conn.execute("""
+            INSERT INTO books (image, title, author, year, genre)
+            VALUES (?, ?, ?, ?, ?)
+        """, data)
 
         conn.execute(
-            """INSERT INTO books (image, title, author, year, genre)
-            VALUES (?, ?, ?, ?, ?)""", (image, title, author, year, genre)
+            "INSERT INTO book_quantities (book_id, quantity) VALUES (?, 10)",
+            (cursor.lastrowid,)
         )
         conn.commit()
         conn.close()
 
-        flash("New book was successfully added", "success")
+        flash("New book was successfully added.", "success")
         return redirect(url_for("index"))
 
     return render_template("add.html")
 
-@app.route('/edit/<id>', methods=['GET', 'POST'])
+
+@app.route("/edit/<int:id>", methods=["GET", "POST"])
+@login_required
 def edit(id):
     conn = get_db_connection()
-    book = conn.execute(
-        "SELECT * FROM books WHERE id = ?", (id,)
-    ).fetchone()
+    book = conn.execute("SELECT * FROM books WHERE id = ?", (id,)).fetchone()
 
     if book is None:
         conn.close()
-        flash("Book not found", "error")
+        flash("Book not found.", "error")
         return redirect(url_for("index"))
 
     if request.method == "POST":
-        image = request.form["image"]
-        title = request.form.get("title")
-        author = request.form.get("author")
-        year = request.form.get("year")
-        genre = request.form.get("genre")
+        data = tuple(request.form.get(key, "") for key in
+                     ("image", "title", "author", "year", "genre"))
 
         conn.execute("""
-            UPDATE books
-            SET image = ?, title = ?, author = ?, year = ?, genre = ?
-            WHERE id = ?
-            """, (image, title, author, year, genre, id)
-        )
+            UPDATE books SET image=?, title=?, author=?, year=?, genre=?
+            WHERE id=?
+        """, (*data, id))
         conn.commit()
         conn.close()
-        flash("Book was successfully updated", "success")
+
+        flash("Book was successfully updated.", "success")
         return redirect(url_for("index"))
 
     conn.close()
     return render_template("edit.html", book=book)
 
-@app.route('/delete/<id>', methods=['GET', 'POST'])
+
+@app.route("/delete/<int:id>", methods=["GET", "POST"])
+@login_required
 def delete(id):
     conn = get_db_connection()
-    conn.execute(
-        """DELETE FROM books WHERE id = ?""", (id,)
-    )
-
+    conn.execute("DELETE FROM cart WHERE book_id = ?", (id,))
+    conn.execute("DELETE FROM book_quantities WHERE book_id = ?", (id,))
+    conn.execute("DELETE FROM books WHERE id = ?", (id,))
     conn.commit()
     conn.close()
 
-    flash("Book was successfully deleted", "success")
+    flash("Book was successfully deleted.", "success")
     return redirect(url_for("index"))
 
-if __name__ == '__main__':
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
+
+        if len(username) < 8 or len(username) > 50 or not password:
+            flash("Username must be 8-50 characters and password is required.", "error")
+        elif password != confirm:
+            flash("Passwords don't match.", "error")
+        else:
+            conn = get_db_connection()
+            try:
+                conn.execute(
+                    "INSERT INTO users (username, password) VALUES (?, ?)",
+                    (username, generate_password_hash(password))
+                )
+                conn.commit()
+                flash("Account created successfully.", "success")
+                return redirect(url_for("login"))
+            except sqlite3.IntegrityError:
+                flash("Username already exists.", "error")
+            finally:
+                conn.close()
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user["password"], password):
+            session.clear()
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            flash("Login successful.", "success")
+            return redirect(url_for("index"))
+
+        flash("Login failed.", "error")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("Logout successful.", "success")
+    return redirect(url_for("index"))
+
+
+@app.route("/cart")
+@login_required
+def view_cart():
+    conn = get_db_connection()
+    items = conn.execute("""
+        SELECT cart.id, cart.book_id, cart.quantity, books.title, books.image,
+               book_quantities.quantity AS stock
+        FROM cart
+        JOIN books ON books.id = cart.book_id
+        JOIN book_quantities ON books.id = book_quantities.book_id
+        WHERE cart.user_id = ?
+    """, (session["user_id"],)).fetchall()
+    conn.close()
+
+    return render_template("cart.html", items=items)
+
+
+@app.route("/cart/remove/<int:cart_id>", methods=["POST"])
+@login_required
+def remove_from_cart(cart_id):
+    conn = get_db_connection()
+    conn.execute(
+        "DELETE FROM cart WHERE id=? AND user_id=?",
+        (cart_id, session["user_id"])
+    )
+    conn.commit()
+    conn.close()
+
+    flash("Book removed from cart.", "success")
+    return redirect(url_for("view_cart"))
+
+
+@app.route("/cart/add/<int:book_id>", methods=["POST"])
+@login_required
+def add_to_cart(book_id):
+    try:
+        quantity = int(request.form.get("quantity", 1))
+        if quantity < 1:
+            raise ValueError
+    except (ValueError, TypeError):
+        flash("Invalid quantity.", "error")
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        book = conn.execute(
+            "SELECT quantity FROM book_quantities WHERE book_id=?",
+            (book_id,)
+        ).fetchone()
+
+        if not book:
+            flash("Book not found.", "error")
+        else:
+            existing = conn.execute(
+                "SELECT quantity FROM cart WHERE user_id=? AND book_id=?",
+                (session["user_id"], book_id)
+            ).fetchone()
+
+            current = existing["quantity"] if existing else 0
+
+            if current + quantity > book["quantity"]:
+                flash(f"Not enough stock. Available: {book['quantity']}.", "error")
+            else:
+                conn.execute("""
+                    INSERT INTO cart (user_id, book_id, quantity)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(user_id, book_id)
+                    DO UPDATE SET quantity = quantity + excluded.quantity
+                """, (session["user_id"], book_id, quantity))
+                flash("Book added to cart successfully.", "success")
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return redirect(url_for("index"))
+
+
+@app.route("/checkout", methods=["POST"])
+@login_required
+def checkout():
+    conn = get_db_connection()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        user_id = session["user_id"]
+
+        items = conn.execute("""
+            SELECT cart.book_id, cart.quantity, book_quantities.quantity AS stock
+            FROM cart
+            JOIN book_quantities ON cart.book_id = book_quantities.book_id
+            WHERE cart.user_id = ?
+        """, (user_id,)).fetchall()
+
+        if not items:
+            conn.rollback()
+            flash("Your cart is empty.", "error")
+            return redirect(url_for("view_cart"))
+
+        if any(item["quantity"] > item["stock"] for item in items):
+            conn.rollback()
+            flash("Not enough books in stock.", "error")
+            return redirect(url_for("view_cart"))
+
+        for item in items:
+            conn.execute("""
+                INSERT INTO borrowings (user_id, book_id, quantity)
+                VALUES (?, ?, ?)
+            """, (user_id, item["book_id"], item["quantity"]))
+
+            conn.execute("""
+                UPDATE book_quantities SET quantity = quantity - ?
+                WHERE book_id = ?
+            """, (item["quantity"], item["book_id"]))
+
+        conn.execute("DELETE FROM cart WHERE user_id = ?", (user_id,))
+        conn.commit()
+        flash("Books borrowed successfully!", "success")
+
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return redirect(url_for("my_borrowings"))
+
+
+@app.route("/my_borrowings")
+@login_required
+def my_borrowings():
+    conn = get_db_connection()
+    borrowings = conn.execute("""
+        SELECT borrowings.id, books.title, borrowings.quantity,
+               borrowings.returned_quantity, borrowings.borrowed_at
+        FROM borrowings
+        JOIN books ON books.id = borrowings.book_id
+        WHERE borrowings.user_id = ?
+    """, (session["user_id"],)).fetchall()
+    conn.close()
+
+    return render_template("my_borrowings.html", borrowings=borrowings)
+
+
+if __name__ == "__main__":
     init_db()
     app.run(debug=True)

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Borrowings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>My Borrowings</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    {% if items %}
+    <table>
+        <thead>
+            <tr>
+                <th>Book</th>
+                <th>Borrowed</th>
+                <th>Returned</th>
+                <th>Still Borrowed</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item["title"] }}</td>
+                <td>{{ item["quantity"] }}</td>
+                <td>{{ item["returned_quantity"] }}</td>
+                <td>{{ item["quantity"] - item["returned_quantity"] }}</td>
+                <td>
+                    {% if item["quantity"] > item["returned_quantity"] %}
+                    <form method="POST"
+                          action="{{ url_for('return_book', borrowing_id=item['id']) }}">
+                        <input type="number"
+                               name="quantity"
+                               min="1"
+                               max="{{ item['quantity'] - item['returned_quantity'] }}"
+                               value="1"
+                               required>
+                        <button type="submit">Return</button>
+                    </form>
+                    {% else %}
+                        Fully returned
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>You haven't borrowed any books yet.</p>
+    {% endif %}
+
+    <p><a href="{{ url_for('index') }}">Back to Books</a></p>
+</div>
+</body>
+</html>

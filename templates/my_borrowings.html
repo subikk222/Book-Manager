@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Borrowings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>My Borrowings</h1>
+
+    <a href="{{ url_for('index') }}">Back to Books</a>
+
+    {% if borrowings %}
+        <table>
+            <tr>
+                <th>Book</th>
+                <th>Quantity</th>
+            </tr>
+
+            {% for borrowing in borrowings %}
+                <tr>
+                    <td>{{ borrowing.title }}</td>
+                    <td>{{ borrowing.quantity }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>You have no borrowed books.</p>
+    {% endif %}
+</body>
+</html>

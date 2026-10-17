@@ -1,90 +1,19 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Manager</title>
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
+<body>
 <script>
 function toggleMenu() {
     document.getElementById("sidePanel").classList.toggle("open");
 }
-</script>
-<body>
-<button class="menu-button" onclick="toggleMenu()">☰</button>
 
-<div id="sidePanel" class="side-panel">
-    <button class="close-menu" onclick="closeMenu()">×</button>
-
-    <h2>Menu</h2>
-
-</div>
-
-<div class="container">
-    <h1>Book Manager</h1>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            <div class="flash {{ category }}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endwith %}
-
-<div class="top-bar">
-    <a href="{{ url_for('add') }}" class="button">
-        Add a Book
-    </a>
-
-    <span>Total books: <strong>{{count}}</strong></span>
-</div>
-
-<button type="button" onclick="openSearch()">Search</button>
-
-<div id="searchPopup" class="search-popup">
-    <div class="search-box">
-        <span class="close-search" onclick="closeSearch()">&times;</span>
-
-        <h2>Search Books</h2>
-
-        <form method="GET" action="{{ url_for('index') }}">
-            <input
-                type="text"
-                name="search"
-                placeholder="Enter search..."
-                value="{{ search }}"
-            >
-
-            <p>Search by:</p>
-
-            <label>
-                <input type="checkbox" name="field" value="title" checked>
-                Title
-            </label>
-
-            <label>
-                <input type="checkbox" name="field" value="author">
-                Author
-            </label>
-
-            <label>
-                <input type="checkbox" name="field" value="genre">
-                Genre
-            </label>
-
-            <label>
-                <input type="checkbox" name="field" value="year">
-                Year
-            </label>
-
-            <button type="submit">Search</button>
-        </form>
-    </div>
-</div>
-
-<script>
 function openSearch() {
     document.getElementById("searchPopup").style.display = "flex";
 }
@@ -94,34 +23,105 @@ function closeSearch() {
 }
 </script>
 
-<a href="{{ url_for('index') }}" class="button secondary">
-            Reset
-        </a>
-    </form>
+<button class="menu-button" onclick="toggleMenu()">☰</button>
+
+<div id="sidePanel" class="side-panel">
+    <button class="close-menu" onclick="toggleMenu()">×</button>
+
+    <h2>Menu</h2>
+
+    {% if session.get("user_id") %}
+        <p>Hello, {{ session.get("username") }}!</p>
+        <a class="btn" href="{{ url_for('logout') }}">Logout</a>
+    {% else %}
+        <a class="btn" href="{{ url_for('login') }}">Login</a>
+        <a class="btn" href="{{ url_for('register') }}">Register</a>
+    {% endif %}
+
+    <a class="btn" href="{{ url_for('view_cart') }}">My Cart</a>
+    <a class="btn" href="{{ url_for('my_borrowings') }}">My Borrowings</a>
+</div>
+
+<div class="container">
+    <h1>Book Manager</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="top-bar">
+        {% if session.get("user_id") %}
+            <a href="{{ url_for('add') }}" class="button">Add a Book</a>
+        {% endif %}
+
+        <span>Total books: <strong>{{ count }}</strong></span>
+    </div>
+
+    <button type="button" onclick="openSearch()">Search</button>
+
+    <div id="searchPopup" class="search-popup">
+        <div class="search-box">
+            <span class="close-search" onclick="closeSearch()">&times;</span>
+
+            <h2>Search Books</h2>
+
+            <form method="GET" action="{{ url_for('index') }}">
+                <input
+                    type="text"
+                    name="search"
+                    placeholder="Enter search..."
+                    value="{{ search }}"
+                >
+
+                <p>Search by:</p>
+
+                <label>
+                    <input type="checkbox" name="field" value="title" checked>
+                    Title
+                </label>
+
+                <label>
+                    <input type="checkbox" name="field" value="author">
+                    Author
+                </label>
+
+                <label>
+                    <input type="checkbox" name="field" value="genre">
+                    Genre
+                </label>
+
+                <label>
+                    <input type="checkbox" name="field" value="year">
+                    Year
+                </label>
+
+                <button type="submit">Search</button>
+            </form>
+        </div>
+    </div>
+
+    <a href="{{ url_for('index') }}" class="button secondary">Reset</a>
 
     <div class="sorting">
         <span>Sort by year:</span>
 
-        <a href="{{ url_for('index', sort='asc') }}">
-            Oldest first
-        </a>
-
-        <a href="{{ url_for('index', sort='desc') }}">
-            Newest first
-        </a>
+        <a href="{{ url_for('index', sort='asc') }}">Oldest first</a>
+        <a href="{{ url_for('index', sort='desc') }}">Newest first</a>
     </div>
 
     {% if books %}
     <table>
         <thead>
             <tr>
-
                 <th>ID</th>
-                <th>image</th>
+                <th>Image</th>
                 <th>Title</th>
                 <th>Author</th>
                 <th>Year</th>
                 <th>Genre</th>
+                <th>Available</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -130,26 +130,52 @@ function closeSearch() {
             {% for book in books %}
             <tr>
                 <td>{{ book["id"] }}</td>
-                <td><img src="{{ book['image'] }}", alt="{{ book['title'] }}"></td>
+                <td>
+                    <img src="{{ book['image'] }}" alt="{{ book['title'] }}">
+                </td>
                 <td>{{ book["title"] }}</td>
                 <td>{{ book["author"] }}</td>
                 <td>{{ book["year"] }}</td>
                 <td>{{ book["genre"] }}</td>
-                <td>
-                    <a
-                        href="{{ url_for('edit', id=book['id']) }}"
-                        class="edit"
-                    >
-                        Edit
-                    </a>
 
-                    <a
-                        href="{{ url_for('delete', id=book['id']) }}"
-                        class="delete"
-                        onclick="return confirm('Delete this book?');"
-                    >
-                        Delete
-                    </a>
+                <td>
+                    {{ book["stock"] if book["stock"] is not none else 0 }}
+                </td>
+
+                <td>
+                    {% if session.get("user_id") %}
+                        {% if book["stock"] is not none and book["stock"] > 0 %}
+                            <form method="POST"
+                                  action="{{ url_for('add_to_cart', book_id=book['id']) }}">
+                                <input
+                                    type="number"
+                                    name="quantity"
+                                    min="1"
+                                    max="{{ book['stock'] }}"
+                                    value="1"
+                                    required
+                                >
+                                <button type="submit">Add to Cart</button>
+                            </form>
+                        {% else %}
+                            <span>Out of stock</span>
+                        {% endif %}
+
+                        <a href="{{ url_for('edit', id=book['id']) }}"
+                           class="edit">Edit</a>
+
+                        <form method="POST"
+                              action="{{ url_for('delete', id=book['id']) }}"
+                              style="display: inline;">
+                            <button type="submit"
+                                    class="delete"
+                                    onclick="return confirm('Delete this book?');">
+                                Delete
+                            </button>
+                        </form>
+                    {% else %}
+                        <a href="{{ url_for('login') }}">Login to borrow</a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -159,7 +185,6 @@ function closeSearch() {
     {% else %}
         <p class="empty">No books found.</p>
     {% endif %}
-
 </div>
 
 </body>
