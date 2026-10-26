@@ -44,7 +44,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             book_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL CHECK(quantity > 0),
+            quantity INTEGER NOT NULL CHECK(quantity >= 0),
             UNIQUE(user_id, book_id),
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (book_id) REFERENCES books(id)
@@ -54,7 +54,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             book_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL CHECK(quantity > 0),
+            quantity INTEGER NOT NULL CHECK(quantity >= 0),
             returned_quantity INTEGER NOT NULL DEFAULT 0,
             borrowed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id),
@@ -63,6 +63,17 @@ def init_db():
 
         INSERT OR IGNORE INTO book_quantities (book_id, quantity)
         SELECT id, 10 FROM books;
+        
+        CREATE TABLE IF NOT EXISTS review (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            book_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+            comment TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (book_id) REFERENCES books(id),
+            UNIQUE(user_id, book_id)
+        );
     """)
 
     conn.commit()
@@ -109,10 +120,25 @@ def index():
         query += f" ORDER BY books.year {sort.upper()}"
 
     books = conn.execute(query, params).fetchall()
+
+    popular_books = conn.execute("""
+        SELECT 
+            books.id,
+            books.title,
+            books.image,
+            ROUND(AVG(review.rating), 1) AS average_rating,
+            COUNT(review.id) AS review_count
+        FROM books
+        JOIN review ON books.id = review.book_id
+        GROUP BY books.id
+        ORDER BY AVG(review.rating) DESC, COUNT(review.id) DESC
+        LIMIT 5;
+    """)
+
     conn.close()
 
     return render_template(
-        "index.html", books=books, count=len(books), search=search
+        "index.html", books=books, count=len(books), search=search, popular_books=popular_books
     )
 
 
@@ -392,6 +418,43 @@ def my_borrowings():
     conn.close()
 
     return render_template("my_borrowings.html", borrowings=borrowings)
+
+@app.route("/review/<int:book_id>", methods=["GET", "POST"])
+@login_required
+def review(book_id):
+    conn = get_db_connection()
+    book = conn.execute(
+        "SELECT * FROM books WHERE id = ?", (book_id,)
+    ).fetchone()
+    if book is None:
+        conn.close()
+        flash("Book not found.", "error")
+        return redirect(url_for("index"))
+    if request.method == "POST":
+        rating = request.form.get("rating", type=int)
+        comment = request.form.get("comment", "").strip()
+
+        if rating is None or rating < 0 or rating > 5 or not comment:
+            flash("Invalid rating.", "error")
+        else:
+            conn.execute("""
+                INSERT INTO review (user_id, book_id, rating, comment)
+                VALUES (?, ?, ?, ?)
+             """, (session["user_id"], book_id, rating, comment))
+            conn.commit()
+            conn.close()
+            flash("Review submitted.", "success")
+            return redirect(url_for("index"))
+        reviews = conn.execute("""
+            SELECT review.rating, review.comment, users.username
+            FROM review
+                JOIN users ON review.user_id = users.id
+                WHERE review.book_id = ?
+                ORDER BY review.id DESC
+        """, (book_id,)).fetchall()
+
+        conn.close()
+        return render_template("review.html", book=book, reviews=reviews)
 
 
 if __name__ == "__main__":

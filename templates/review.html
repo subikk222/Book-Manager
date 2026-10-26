@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Rating</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1> {{ book.title }}</h1>
+    <h1> {{ book.author }}</h1>
+
+    <h2>Your Review</h2>
+
+    <form method="POST">
+        <label>Rating:</label>
+
+        <select name="rating" required>
+            <option value="">Choose starts</option>
+            <option value="5">★★★★★ - Excellent</option>
+            <option value="4">★★★★ - Good</option>
+            <option value="3">★★★ - Average</option>
+            <option value="2">★★ - Bad</option>
+            <option value="1">★ - Very Bad</option>
+        </select>
+
+        <br><br>
+
+        <label>Your review:</label>
+        <textarea name="comment" required></textarea>
+        <br><br>
+
+        <button type="submit">Submit Review</button>
+
+    </form>
+    <hr>
+    <h2>Reviews</h2>
+    {{ % for item in reviews % }}
+        <div class="review">
+            <strong>{{ item.username }}</strong>
+            <p>{{ "★" * item.rating }}{{ "☆" * (5 - item.rating) }}</p>
+            <p>{{ item.comment }}</p>
+        </div>
+    {% else %}
+        <p>No reviews yet</p>
+    {% endfor %}
+    <a href="{{ url_for('index') }}">Back to Books</a>
+</div>
+</body>
+</html>

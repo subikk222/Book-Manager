@@ -32,14 +32,32 @@ function closeSearch() {
 
     {% if session.get("user_id") %}
         <p>Hello, {{ session.get("username") }}!</p>
-        <a class="btn" href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-        <a class="btn" href="{{ url_for('login') }}">Login</a>
-        <a class="btn" href="{{ url_for('register') }}">Register</a>
-    {% endif %}
+    <ul>
+        <li>
+            <a class="btn" href="{{ url_for('logout') }}">Logout</a>
+        </li>
+        <li>
+            <a class="btn" href="{{ url_for('view_cart') }}">My Cart</a>
+        </li>
+        <li>
+            <a class="btn" href="{{ url_for('my_borrowings') }}">My Borrowings</a>
+        </li>
+        {% else %}
+        <li>
+            <a class="btn" href="{{ url_for('login') }}">Login</a>
+        </li>
+        <li>
+            <a class="btn" href="{{ url_for('register') }}">Register</a>
+        </li>
+        <li>
+            <a class="btn" href="{{ url_for('review') }}">Review</a>
+        </li>
+        {% endif %}
 
-    <a class="btn" href="{{ url_for('view_cart') }}">My Cart</a>
-    <a class="btn" href="{{ url_for('my_borrowings') }}">My Borrowings</a>
+
+
+    </ul>
+
 </div>
 
 <div class="container">
@@ -187,5 +205,24 @@ function closeSearch() {
     {% endif %}
 </div>
 
+<div class="popular_books">
+    <h2>Most Popular Books</h2>
+    {% for book in popular_books %}
+        <div class="popular-book">
+             <img src="{{ book.image }}" alt="{{ book.title }}"
+                  style="width: 60px; height: 80px; object-fit: cover;">
+             <div>
+                 <a href="{{ url_for('review', book_id=book_id) }}">
+                     <strong>{{ book.title }}</strong>
+                 </a>
+                 <p> {{ book.average.rating }}/5</p>
+                 <p>{{ book.review_count }} reviews</p>
+             </div>
+        </div>
+
+    {% else %}
+        <p>No reviewed books yet</p>
+    {% endfor %}
+</div>
 </body>
 </html>

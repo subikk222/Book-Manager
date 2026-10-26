@@ -231,3 +231,35 @@ a:hover {
     transform: none;
     box-shadow: none;
 }
+
+.popular-books {
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 10px;
+    background: #f2f2f2;
+    color: #222;
+}
+
+.popular-book {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 0;
+    border-bottom: 1px solid #ccc;
+}
+
+.popular-book p {
+    margin: 5px 0;
+}
+
+.review {
+    padding: 15px;
+    margin: 15px 0;
+    border-bottom: 1px solid #ccc;
+}
+
+textarea {
+    width: 100%;
+    max-width: 400px;
+    min-height: 100px;
+}
