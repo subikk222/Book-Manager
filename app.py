@@ -133,7 +133,7 @@ def index():
         GROUP BY books.id
         ORDER BY AVG(review.rating) DESC, COUNT(review.id) DESC
         LIMIT 5;
-    """)
+    """).fetchall()
 
     conn.close()
 
@@ -434,27 +434,31 @@ def review(book_id):
         rating = request.form.get("rating", type=int)
         comment = request.form.get("comment", "").strip()
 
-        if rating is None or rating < 0 or rating > 5 or not comment:
+        if rating is None or rating < 1 or rating > 5 or not comment:
             flash("Invalid rating.", "error")
         else:
-            conn.execute("""
-                INSERT INTO review (user_id, book_id, rating, comment)
-                VALUES (?, ?, ?, ?)
-             """, (session["user_id"], book_id, rating, comment))
-            conn.commit()
-            conn.close()
-            flash("Review submitted.", "success")
-            return redirect(url_for("index"))
-        reviews = conn.execute("""
-            SELECT review.rating, review.comment, users.username
-            FROM review
-                JOIN users ON review.user_id = users.id
-                WHERE review.book_id = ?
-                ORDER BY review.id DESC
-        """, (book_id,)).fetchall()
+            try:
+                conn.execute("""
+                    INSERT INTO review (user_id, book_id, rating, comment)
+                    VALUES (?, ?, ?, ?)
+                """, (session["user_id"], book_id, rating, comment))
+                conn.commit()
+                flash("Review submitted.", "success")
+                conn.close()
+                return redirect(url_for("index"))
+            except sqlite3.IntegrityError:
+                flash("You already reviewed this book.", "error")
 
-        conn.close()
-        return render_template("review.html", book=book, reviews=reviews)
+    reviews = conn.execute("""
+        SELECT review.rating, review.comment, users.username
+        FROM review
+        JOIN users ON review.user_id = users.id
+        WHERE review.book_id = ?
+        ORDER BY review.id DESC
+    """, (book_id,)).fetchall()
+
+    conn.close()
+    return render_template("review.html", book=book, reviews=reviews)
 
 
 if __name__ == "__main__":

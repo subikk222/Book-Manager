@@ -49,13 +49,7 @@ function closeSearch() {
         <li>
             <a class="btn" href="{{ url_for('register') }}">Register</a>
         </li>
-        <li>
-            <a class="btn" href="{{ url_for('review') }}">Review</a>
-        </li>
         {% endif %}
-
-
-
     </ul>
 
 </div>
@@ -205,20 +199,17 @@ function closeSearch() {
     {% endif %}
 </div>
 
-<div class="popular_books">
+<div class="popular-books">
     <h2>Most Popular Books</h2>
     {% for book in popular_books %}
         <div class="popular-book">
              <img src="{{ book.image }}" alt="{{ book.title }}"
                   style="width: 60px; height: 80px; object-fit: cover;">
              <div>
-                 <a href="{{ url_for('review', book_id=book_id) }}">
+                 <a href="{{ url_for('review', book_id=book.id) }}">
                      <strong>{{ book.title }}</strong>
                  </a>
-                 <p> {{ book.average.rating }}/5</p>
-                 <p>{{ book.review_count }} reviews</p>
-             </div>
-        </div>
+                 <p> {{ book.average_rating }}/5</p>
 
     {% else %}
         <p>No reviewed books yet</p>
