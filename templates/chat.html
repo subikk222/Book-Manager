@@ -73,11 +73,11 @@
 
         <div class="chat-message">
 
-            <strong>{{ message.username }}</strong>
+            <strong>User #{{ message.user_id }}</strong>
 
             <p>{{ message.text }}</p>
 
-            {% if message.username == session.get("username") %}
+            {% if message.user_id == session.get("user_id") %}
 
                 <div class="chat-actions">
 

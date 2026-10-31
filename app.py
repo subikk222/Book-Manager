@@ -1,14 +1,16 @@
-
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 import sqlite3
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timezone
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.secret_key = "library_secret_key"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lib.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DATABASE = "lib.db"
-chat_messages = []
-next_message_id = 1
+db = SQLAlchemy(app)
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -75,10 +77,43 @@ def init_db():
             FOREIGN KEY (book_id) REFERENCES books(id),
             UNIQUE(user_id, book_id)
         );
+        
+        CREATE TABLE IF NOT EXISTS chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+
+        is_updated BOOLEAN NOT NULL DEFAULT FALSE
+        CHECK (is_updated IN (0, 1)),
+
+        created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+        FOREIGN KEY (user_id) REFERENCES users(id)
+);
     """)
 
     conn.commit()
     conn.close()
+
+
+class Message(db.Model):
+    __tablename__ = "messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    text = db.Column(db.String(500), nullable=False)
+
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
 
 
 def login_required(route):
@@ -420,52 +455,49 @@ def my_borrowings():
 
     return render_template("my_borrowings.html", borrowings=borrowings)
 
-
 @app.route("/chat")
 @login_required
 def chat():
-    return render_template("chat.html", messages=chat_messages)
+    messages = Message.query.order_by(Message.created_at.asc()).all()
+    return render_template("chat.html", messages=messages)
 
 
 @app.route("/chat/send", methods=["POST"])
 @login_required
 def send_message():
-    global next_message_id
+    text = request.form.get("message", "").strip()
 
-    message = request.form.get("message", "").strip()
-
-    if message:
-        chat_messages.append({
-            "id": next_message_id,
-            "username": session["username"],
-            "text": message[:500]
-        })
-        next_message_id += 1
-
+    if text:
+        message = Message(
+            user_id=session["user_id"],
+            text=text[:500]
+        )
+        db.session.add(message)
+        db.session.commit()
     return redirect(url_for("chat"))
 
 
 @app.route("/chat/update/<int:message_id>", methods=["POST"])
 @login_required
 def update_message(message_id):
-    message = next((m for m in chat_messages if m["id"] == message_id), None)
+    message = Message.query.filter_by(id=message_id, user_id=session["user_id"]).first()
 
-    if message and message["username"] == session["username"]:
-        new_text = request.form.get("message", "").strip()
+    new_text = request.form.get("message", "").strip()
 
-        if new_text:
-            message["text"] = new_text[:500]
+    if message and new_text:
+        message.text = new_text[:500]
+        db.session.commit()
 
     return redirect(url_for("chat"))
-
 
 @app.route("/chat/delete/<int:message_id>", methods=["POST"])
 @login_required
 def delete_message(message_id):
-    message = next((m for m in chat_messages if m["id"] == message_id), None)
+    message = Message.query.filter_by(id=message_id, user_id=session["user_id"]).first()
 
-    if message and message["username"] == session["username"]:
-        chat_messages.remove(message)
+    if message:
+        db.session.delete(message)
+        db.session.commit()
 
     return redirect(url_for("chat"))
 
@@ -510,7 +542,8 @@ def review(book_id):
     conn.close()
     return render_template("review.html", book=book, reviews=reviews)
 
-
+with app.app_context():
+    db.create_all()
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
