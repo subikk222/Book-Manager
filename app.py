@@ -102,6 +102,7 @@ class Message(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, nullable=False)
+    username = db.Column(db.String(50), nullable=False)
     text = db.Column(db.String(500), nullable=False)
 
     created_at = db.Column(
@@ -470,6 +471,7 @@ def send_message():
     if text:
         message = Message(
             user_id=session["user_id"],
+            username=session["username"],
             text=text[:500]
         )
         db.session.add(message)
