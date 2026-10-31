@@ -42,6 +42,9 @@ function closeSearch() {
         <li>
             <a class="btn" href="{{ url_for('my_borrowings') }}">My Borrowings</a>
         </li>
+        <li>
+            <a class="btn" href="{{ url_for('chat') }}">Chat</a>
+        </li>
         {% else %}
         <li>
             <a class="btn" href="{{ url_for('login') }}">Login</a>

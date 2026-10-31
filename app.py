@@ -7,7 +7,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = "library_secret_key"
 DATABASE = "lib.db"
-
+chat_messages = []
+next_message_id = 1
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -418,6 +419,55 @@ def my_borrowings():
     conn.close()
 
     return render_template("my_borrowings.html", borrowings=borrowings)
+
+
+@app.route("/chat")
+@login_required
+def chat():
+    return render_template("chat.html", messages=chat_messages)
+
+
+@app.route("/chat/send", methods=["POST"])
+@login_required
+def send_message():
+    global next_message_id
+
+    message = request.form.get("message", "").strip()
+
+    if message:
+        chat_messages.append({
+            "id": next_message_id,
+            "username": session["username"],
+            "text": message[:500]
+        })
+        next_message_id += 1
+
+    return redirect(url_for("chat"))
+
+
+@app.route("/chat/update/<int:message_id>", methods=["POST"])
+@login_required
+def update_message(message_id):
+    message = next((m for m in chat_messages if m["id"] == message_id), None)
+
+    if message and message["username"] == session["username"]:
+        new_text = request.form.get("message", "").strip()
+
+        if new_text:
+            message["text"] = new_text[:500]
+
+    return redirect(url_for("chat"))
+
+
+@app.route("/chat/delete/<int:message_id>", methods=["POST"])
+@login_required
+def delete_message(message_id):
+    message = next((m for m in chat_messages if m["id"] == message_id), None)
+
+    if message and message["username"] == session["username"]:
+        chat_messages.remove(message)
+
+    return redirect(url_for("chat"))
 
 @app.route("/review/<int:book_id>", methods=["GET", "POST"])
 @login_required

@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Book Manager Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .chat-box {
+            max-width: 700px;
+            margin: 30px auto;
+        }
+
+        .chat-message {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        .chat-message p {
+            overflow-wrap: anywhere;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-actions form {
+            display: flex;
+            gap: 5px;
+        }
+
+        .chat-send {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-send input {
+            flex: 1;
+        }
+
+        .delete-button {
+            background: #c94c4c;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container chat-box">
+
+    <a href="{{ url_for('index') }}">← Back to books</a>
+
+    <h1>Book Manager Chat</h1>
+
+    <form class="chat-send" method="POST" action="{{ url_for('send_message') }}">
+        <input type="text" name="message"
+               placeholder="Write a message..."
+               maxlength="500" required>
+
+        <button type="submit">Send</button>
+    </form>
+
+    <h2>Messages</h2>
+
+    {% for message in messages %}
+
+        <div class="chat-message">
+
+            <strong>{{ message.username }}</strong>
+
+            <p>{{ message.text }}</p>
+
+            {% if message.username == session.get("username") %}
+
+                <div class="chat-actions">
+
+                    <form method="POST"
+                          action="{{ url_for('update_message', message_id=message.id) }}">
+
+                        <input type="text" name="message"
+                               value="{{ message.text }}"
+                               maxlength="500" required>
+
+                        <button type="submit">Update</button>
+
+                    </form>
+
+                    <form method="POST"
+                          action="{{ url_for('delete_message', message_id=message.id) }}">
+
+                        <button type="submit" class="delete-button"
+                                onclick="return confirm('Delete this message?')">
+                            Delete
+                        </button>
+
+                    </form>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    {% else %}
+
+        <p>No messages yet. Send the first message!</p>
+
+    {% endfor %}
+
+</div>
+
+</body>
+</html>
