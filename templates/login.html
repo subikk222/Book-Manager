@@ -11,7 +11,7 @@
 <div class="container">
     <h1>Login</h1>
 
-     <form method="POST" action="{{ url_for('login') }}">
+     <form method="POST" action="{{ url_for('auth.login') }}">
         <label>Username</label>
         <input type="text" name="username" required>
 
@@ -21,8 +21,8 @@
          <button type="submit">Login</button>
      </form>
 
-    <p>No Account?<a href="{{ url_for('register') }}">Regiser</a></p>
-    <p><a href="{{ url_for('index') }}">Back to Books</a></p>
+    <p>No Account?<a href="{{ url_for('auth.register') }}">Regiser</a></p>
+    <p><a href="{{ url_for('books.index') }}">Back to Books</a></p>
 </div>
 </body>
 </html>

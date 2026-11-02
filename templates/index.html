@@ -34,23 +34,23 @@ function closeSearch() {
         <p>Hello, {{ session.get("username") }}!</p>
     <ul>
         <li>
-            <a class="btn" href="{{ url_for('logout') }}">Logout</a>
+            <a class="btn" href="{{ url_for('auth.logout') }}">Logout</a>
         </li>
         <li>
-            <a class="btn" href="{{ url_for('view_cart') }}">My Cart</a>
+            <a class="btn" href="{{ url_for('cart.view_cart') }}">My Cart</a>
         </li>
         <li>
-            <a class="btn" href="{{ url_for('my_borrowings') }}">My Borrowings</a>
+            <a class="btn" href="{{ url_for('cart.my_borrowings') }}">My Borrowings</a>
         </li>
         <li>
-            <a class="btn" href="{{ url_for('chat') }}">Chat</a>
+            <a class="btn" href="{{ url_for('chat.chat') }}">Chat</a>
         </li>
         {% else %}
         <li>
-            <a class="btn" href="{{ url_for('login') }}">Login</a>
+            <a class="btn" href="{{ url_for('auth.login') }}">Login</a>
         </li>
         <li>
-            <a class="btn" href="{{ url_for('register') }}">Register</a>
+            <a class="btn" href="{{ url_for('auth.register') }}">Register</a>
         </li>
         {% endif %}
     </ul>
@@ -68,7 +68,7 @@ function closeSearch() {
 
     <div class="top-bar">
         {% if session.get("user_id") %}
-            <a href="{{ url_for('add') }}" class="button">Add a Book</a>
+            <a href="{{ url_for('books.add') }}" class="button">Add a Book</a>
         {% endif %}
 
         <span>Total books: <strong>{{ count }}</strong></span>
@@ -82,7 +82,7 @@ function closeSearch() {
 
             <h2>Search Books</h2>
 
-            <form method="GET" action="{{ url_for('index') }}">
+            <form method="GET" action="{{ url_for('books.index') }}">
                 <input
                     type="text"
                     name="search"
@@ -117,13 +117,13 @@ function closeSearch() {
         </div>
     </div>
 
-    <a href="{{ url_for('index') }}" class="button secondary">Reset</a>
+    <a href="{{ url_for('books.index') }}" class="button secondary">Reset</a>
 
     <div class="sorting">
         <span>Sort by year:</span>
 
-        <a href="{{ url_for('index', sort='asc') }}">Oldest first</a>
-        <a href="{{ url_for('index', sort='desc') }}">Newest first</a>
+        <a href="{{ url_for('books.index', sort='asc') }}">Oldest first</a>
+        <a href="{{ url_for('books.index', sort='desc') }}">Newest first</a>
     </div>
 
     {% if books %}
@@ -144,29 +144,29 @@ function closeSearch() {
         <tbody>
             {% for book in books %}
             <tr>
-                <td>{{ book["id"] }}</td>
+                <td>{{ book.id }}</td>
                 <td>
-                    <img src="{{ book['image'] }}" alt="{{ book['title'] }}">
+                    <img src="{{ book.image }}" alt="{{ book.title }}">
                 </td>
-                <td>{{ book["title"] }}</td>
-                <td>{{ book["author"] }}</td>
-                <td>{{ book["year"] }}</td>
-                <td>{{ book["genre"] }}</td>
+                <td>{{ book.title }}</td>
+                <td>{{ book.author }}</td>
+                <td>{{ book.year }}</td>
+                <td>{{ book.genre }}</td>
 
                 <td>
-                    {{ book["stock"] if book["stock"] is not none else 0 }}
+                    {{ book.stock if book.stock is not none else 0 }}
                 </td>
 
                 <td>
                     {% if session.get("user_id") %}
-                        {% if book["stock"] is not none and book["stock"] > 0 %}
+                        {% if book.stock is not none and book.stock > 0 %}
                             <form method="POST"
-                                  action="{{ url_for('add_to_cart', book_id=book['id']) }}">
+                                  action="{{ url_for('cart.add_to_cart', book_id=book.id) }}">
                                 <input
                                     type="number"
                                     name="quantity"
                                     min="1"
-                                    max="{{ book['stock'] }}"
+                                    max="{{ book.stock }}"
                                     value="1"
                                     required
                                 >
@@ -176,11 +176,11 @@ function closeSearch() {
                             <span>Out of stock</span>
                         {% endif %}
 
-                        <a href="{{ url_for('edit', id=book['id']) }}"
+                        <a href="{{ url_for('books.edit', id=book.id) }}"
                            class="edit">Edit</a>
 
                         <form method="POST"
-                              action="{{ url_for('delete', id=book['id']) }}"
+                              action="{{ url_for('books.delete', id=book.id) }}"
                               style="display: inline;">
                             <button type="submit"
                                     class="delete"
@@ -189,7 +189,7 @@ function closeSearch() {
                             </button>
                         </form>
                     {% else %}
-                        <a href="{{ url_for('login') }}">Login to borrow</a>
+                        <a href="{{ url_for('auth.login') }}">Login to borrow</a>
                     {% endif %}
                 </td>
             </tr>
@@ -209,11 +209,13 @@ function closeSearch() {
              <img src="{{ book.image }}" alt="{{ book.title }}"
                   style="width: 60px; height: 80px; object-fit: cover;">
              <div>
-                 <a href="{{ url_for('review', book_id=book.id) }}">
+                 <a href="{{ url_for('books.review', book_id=book.id) }}">
                      <strong>{{ book.title }}</strong>
                  </a>
-                 <p> {{ book.average_rating }}/5</p>
-
+                 <p>{{ book.average_rating }}/5</p>
+                 <p>{{ book.review_count }} reviews</p>
+             </div>
+        </div>
     {% else %}
         <p>No reviewed books yet</p>
     {% endfor %}

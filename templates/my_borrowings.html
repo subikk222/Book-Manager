@@ -8,7 +8,7 @@
 <body>
     <h1>My Borrowings</h1>
 
-    <a href="{{ url_for('index') }}">Back to Books</a>
+    <a href="{{ url_for('books.index') }}">Back to Books</a>
 
     {% if borrowings %}
         <table>
@@ -19,7 +19,7 @@
 
             {% for borrowing in borrowings %}
                 <tr>
-                    <td>{{ borrowing.title }}</td>
+                    <td>{{ borrowing.book.title }}</td>
                     <td>{{ borrowing.quantity }}</td>
                 </tr>
             {% endfor %}

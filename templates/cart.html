@@ -29,12 +29,12 @@
         <tbody>
             {% for item in items %}
             <tr>
-                <td>{{ item["title"] }}</td>
-                <td>{{ item["quantity"] }}</td>
-                <td>{{ item["stock"] }}</td>
+                <td>{{ item.title }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.stock }}</td>
                 <td>
                     <form method="POST"
-                          action="{{ url_for('remove_from_cart', cart_id=item['id']) }}">
+                          action="{{ url_for('cart.remove_from_cart', cart_id=item.id) }}">
                         <button type="submit">Remove</button>
                     </form>
                 </td>
@@ -43,14 +43,14 @@
         </tbody>
     </table>
 
-    <form method="POST" action="{{ url_for('checkout') }}">
+    <form method="POST" action="{{ url_for('cart.checkout') }}">
         <button type="submit">Borrow All Books</button>
     </form>
     {% else %}
         <p>Your cart is empty.</p>
     {% endif %}
 
-    <p><a href="{{ url_for('index') }}">Back to Books</a></p>
+    <p><a href="{{ url_for('books.index') }}">Back to Books</a></p>
 </div>
 </body>
 </html>

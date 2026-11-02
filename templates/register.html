@@ -11,7 +11,7 @@
 <div class="container">
     <h1>Create an Account</h1>
 
-    <form method="POST" action="{{ url_for('register') }}">
+    <form method="POST" action="{{ url_for('auth.register') }}">
         <label>Username</label>
         <input type="text" name="username" maxlength="50" required>
 
@@ -24,8 +24,8 @@
         <button type="submit">Register</button>
     </form>
 
-    <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
-    <p><a href="{{ url_for('index') }}">Back to Books</a></p>
+    <p>Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
+    <p><a href="{{ url_for('books.index') }}">Back to Books</a></p>
 </div>
 </body>
 </html>

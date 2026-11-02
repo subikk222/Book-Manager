@@ -55,11 +55,11 @@
 
 <div class="container chat-box">
 
-    <a href="{{ url_for('index') }}">← Back to books</a>
+    <a href="{{ url_for('books.index') }}">← Back to books</a>
 
     <h1>Book Manager Chat</h1>
 
-    <form class="chat-send" method="POST" action="{{ url_for('send_message') }}">
+    <form class="chat-send" method="POST" action="{{ url_for('chat.send_message') }}">
         <input type="text" name="message"
                placeholder="Write a message..."
                maxlength="500" required>
@@ -82,7 +82,7 @@
                 <div class="chat-actions">
 
                     <form method="POST"
-                          action="{{ url_for('update_message', message_id=message.id) }}">
+                          action="{{ url_for('chat.update_message', message_id=message.id) }}">
 
                         <input type="text" name="message"
                                value="{{ message.text }}"
@@ -93,7 +93,7 @@
                     </form>
 
                     <form method="POST"
-                          action="{{ url_for('delete_message', message_id=message.id) }}">
+                          action="{{ url_for('chat.delete_message', message_id=message.id) }}">
 
                         <button type="submit" class="delete-button"
                                 onclick="return confirm('Delete this message?')">
